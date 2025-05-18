@@ -3,35 +3,119 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Tic Tac Toe AI vs AI</title>
+  <title>Tic Tac Toe: Human vs AI</title>
   <style>
     body {
-      font-family: monospace;
-      background: #f0f0f0;
+      font-family: sans-serif;
+      text-align: center;
+      margin: 0;
       padding: 20px;
+      background: #f5f5f5;
     }
-    pre {
-      background: #fff;
-      border: 1px solid #ccc;
-      padding: 10px;
-      white-space: pre-wrap;
+    h1 {
+      margin-bottom: 10px;
+    }
+    #board {
+      display: grid;
+      grid-template-columns: repeat(3, 100px);
+      gap: 5px;
+      justify-content: center;
+      margin: 20px auto;
+    }
+    .cell {
+      width: 100px;
+      height: 100px;
+      font-size: 2em;
+      background: white;
+      border: 2px solid #333;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #status {
+      font-weight: bold;
+      margin-top: 10px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      margin: 10px;
     }
   </style>
 </head>
 <body>
-  <h2>Tic Tac Toe AI vs AI (Alpha-Beta)</h2>
-  <pre id="board"></pre>
+
+  <h1>Tic Tac Toe: Human vs AI</h1>
+
+  <div>
+    <button onclick="startGame(1)">Play as X</button>
+    <button onclick="startGame(2)">Play as O</button>
+  </div>
+
+  <div id="board"></div>
+  <div id="status">Choose X or O to start</div>
 
   <script>
-    const BOARD_ROWS = 3, BOARD_COLS = 3;
-    let board = Array.from({ length: BOARD_ROWS }, () => Array(BOARD_COLS).fill(0));
-    const delay = ms => new Promise(res => setTimeout(res, ms));
+    let board = Array.from({ length: 3 }, () => Array(3).fill(0));
+    let humanPlayer = 1;
+    let aiPlayer = 2;
+    let gameOver = false;
 
-    function printBoard() {
-      const symbols = { 0: " ", 1: "X", 2: "O" };
-      return board.map(row =>
-        row.map(cell => symbols[cell]).join(" | ")
-      ).join("\n---------\n");
+    const boardDiv = document.getElementById("board");
+    const statusDiv = document.getElementById("status");
+
+    function startGame(human) {
+      board = Array.from({ length: 3 }, () => Array(3).fill(0));
+      boardDiv.innerHTML = "";
+      gameOver = false;
+      humanPlayer = human;
+      aiPlayer = human === 1 ? 2 : 1;
+      statusDiv.textContent = `You are ${human === 1 ? "X" : "O"}`;
+      drawBoard();
+      if (aiPlayer === 1) aiMove();
+    }
+
+    function drawBoard() {
+      boardDiv.innerHTML = "";
+      for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 3; c++) {
+          const cell = document.createElement("div");
+          cell.className = "cell";
+          cell.textContent = board[r][c] === 1 ? "X" : board[r][c] === 2 ? "O" : "";
+          cell.onclick = () => handleClick(r, c);
+          boardDiv.appendChild(cell);
+        }
+      }
+    }
+
+    function handleClick(r, c) {
+      if (gameOver || board[r][c] !== 0 || humanPlayer === 0) return;
+      board[r][c] = humanPlayer;
+      drawBoard();
+      checkGameOver();
+      if (!gameOver) setTimeout(aiMove, 300);
+    }
+
+    function aiMove() {
+      const move = bestMove(aiPlayer);
+      if (move) {
+        const [r, c] = move;
+        board[r][c] = aiPlayer;
+        drawBoard();
+        checkGameOver();
+      }
+    }
+
+    function checkGameOver() {
+      const winner = checkWinner();
+      if (winner !== 0) {
+        statusDiv.textContent = winner === humanPlayer ? "🎉 You win!" : "💻 AI wins!";
+        gameOver = true;
+      } else if (isFull()) {
+        statusDiv.textContent = "🤝 It's a draw!";
+        gameOver = true;
+      }
     }
 
     function checkWinner() {
@@ -48,8 +132,8 @@
 
     function alphaBeta(isMax, alpha, beta) {
       const winner = checkWinner();
-      if (winner === 1) return 1;
-      if (winner === 2) return -1;
+      if (winner === aiPlayer) return 1;
+      if (winner === humanPlayer) return -1;
       if (isFull()) return 0;
 
       if (isMax) {
@@ -57,7 +141,7 @@
         for (let r = 0; r < 3; r++) {
           for (let c = 0; c < 3; c++) {
             if (board[r][c] === 0) {
-              board[r][c] = 1;
+              board[r][c] = aiPlayer;
               let eval = alphaBeta(false, alpha, beta);
               board[r][c] = 0;
               maxEval = Math.max(maxEval, eval);
@@ -72,7 +156,7 @@
         for (let r = 0; r < 3; r++) {
           for (let c = 0; c < 3; c++) {
             if (board[r][c] === 0) {
-              board[r][c] = 2;
+              board[r][c] = humanPlayer;
               let eval = alphaBeta(true, alpha, beta);
               board[r][c] = 0;
               minEval = Math.min(minEval, eval);
@@ -85,18 +169,15 @@
       }
     }
 
-    function bestMove(isMax) {
-      let bestVal = isMax ? -Infinity : Infinity, move = null;
+    function bestMove(player) {
+      let bestVal = -Infinity, move = null;
       for (let r = 0; r < 3; r++) {
         for (let c = 0; c < 3; c++) {
           if (board[r][c] === 0) {
-            board[r][c] = isMax ? 1 : 2;
-            let eval = alphaBeta(!isMax, -Infinity, Infinity);
+            board[r][c] = player;
+            let eval = alphaBeta(false, -Infinity, Infinity);
             board[r][c] = 0;
-            if (isMax && eval > bestVal) {
-              bestVal = eval;
-              move = [r, c];
-            } else if (!isMax && eval < bestVal) {
+            if (eval > bestVal) {
               bestVal = eval;
               move = [r, c];
             }
@@ -105,38 +186,6 @@
       }
       return move;
     }
-
-    async function runGame() {
-      let isMaximizing = true;
-      const output = document.getElementById("board");
-      output.textContent = printBoard();
-
-      while (true) {
-        await delay(500);
-        const move = bestMove(isMaximizing);
-        if (move) {
-          const [r, c] = move;
-          board[r][c] = isMaximizing ? 1 : 2;
-          output.textContent += `\n\nAI ${isMaximizing ? "X" : "O"} moves to (${r}, ${c})\n\n`;
-          output.textContent += printBoard();
-        }
-
-        const winner = checkWinner();
-        if (winner !== 0) {
-          output.textContent += `\n\n🏆 AI ${winner === 1 ? "X" : "O"} wins!`;
-          break;
-        }
-
-        if (isFull()) {
-          output.textContent += `\n\n🤝 It's a draw!`;
-          break;
-        }
-
-        isMaximizing = !isMaximizing;
-      }
-    }
-
-    runGame();
   </script>
 </body>
 </html>
